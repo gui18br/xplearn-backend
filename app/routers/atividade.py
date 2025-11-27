@@ -112,6 +112,91 @@ def get_atv_by_id(id: int, db: Session = Depends(database.get_db)):
             detail=f"Erro interno do servidor ao buscar atividade."
         )
 
+@router.put("/{id}", response_model=schemas.AtividadeResponseSingle)
+def update_atv(
+    id: int,
+    atv_update: schemas.AtividadeUpdate,
+    db: Session = Depends(database.get_db)
+):
+    try:
+        # Busca a atividade existente
+        atv = db.query(Atividade).filter(Atividade.id == id).first()
+        
+        if not atv:
+            raise HTTPException(status_code=404, detail="Atividade não encontrada")
+        
+        # Valida badge se fornecido
+        if atv_update.badge_id_fk is not None:
+            badge = db.query(Badge).filter(Badge.id == atv_update.badge_id_fk).first()
+            if not badge:
+                raise HTTPException(status_code=404, detail="Badge não encontrada")
+        
+        # Valida turma se fornecido
+        if atv_update.turma_id_fk is not None:
+            turma = db.query(Turma).filter(Turma.id == atv_update.turma_id_fk).first()
+            if not turma:
+                raise HTTPException(status_code=404, detail="Turma não encontrada")
+        
+        # Atualiza apenas os campos fornecidos
+        update_data = atv_update.dict(exclude_unset=True)
+        
+        for field, value in update_data.items():
+            setattr(atv, field, value)
+        
+        db.commit()
+        db.refresh(atv)
+        
+        return {"data": atv}
+    
+    except HTTPException as e:
+        raise e
+    except SQLAlchemyError as e:
+        db.rollback()
+        print(f"Erro no banco de dados ao atualizar atividade: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro no banco de dados: Não foi possível atualizar a atividade. Detalhe: {e}"
+        )
+    except Exception as e:
+        db.rollback()
+        print(f"Erro inesperado ao atualizar atividade: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro interno do servidor ao atualizar atividade."
+        )
+
+@router.delete("/{id}")
+def delete_atv(id: int, db: Session = Depends(database.get_db)):
+    try:
+        # Busca a atividade existente
+        atv = db.query(Atividade).filter(Atividade.id == id).first()
+        
+        if not atv:
+            raise HTTPException(status_code=404, detail="Atividade não encontrada")
+        
+        # Deleta a atividade (cascade já está configurado no modelo para deletar AlunoAtividade relacionadas)
+        db.delete(atv)
+        db.commit()
+        
+        return {"msg": f"Atividade {id} deletada com sucesso"}
+    
+    except HTTPException as e:
+        raise e
+    except SQLAlchemyError as e:
+        db.rollback()
+        print(f"Erro no banco de dados ao deletar atividade: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro no banco de dados: Não foi possível deletar a atividade. Detalhe: {e}"
+        )
+    except Exception as e:
+        db.rollback()
+        print(f"Erro inesperado ao deletar atividade: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro interno do servidor ao deletar atividade."
+        )
+
 @router.post("/alunos/{matricula}/atividades/{atv_id}")
 def atribuir_nota_aluno(matricula: str, atv_id: int, nota: str, db: Session = Depends(database.get_db)):
     try:
