@@ -15,6 +15,15 @@ class AtividadeBase(BaseModel):
 class AtividadeCreate(AtividadeBase):
     pass
 
+class AtividadeUpdate(BaseModel):
+    nome: Optional[str] = None
+    descricao: Optional[str] = None
+    nota_max: Optional[Decimal] = None
+    pontos: Optional[int] = None
+    badge_id_fk: Optional[int] = None
+    turma_id_fk: Optional[int] = None
+    data_entrega: Optional[datetime] = None
+
 class AtividadeRead(BaseModel):
     id: int
     nome: str
