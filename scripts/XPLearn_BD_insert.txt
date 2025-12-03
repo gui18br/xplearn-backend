@@ -156,13 +156,13 @@ INSERT INTO Badge (nome, requisito, caminho_foto) VALUES
 
 -- Inserts de Professores
 INSERT INTO Professor (matricula, nome, senha, avatar_id_fk) VALUES
-('P001', 'Carlos Souza', 'HASH_SENHA_1', 1),
-('P002', 'Maria Oliveira', 'HASH_SENHA_2', 2);
+('0000001', 'Carlos Souza', 'HASH_SENHA_1', 1),
+('0000002', 'Maria Oliveira', 'HASH_SENHA_2', 2);
 
 -- Inserts de Turmas
 INSERT INTO Turma (nome, professor_matricula_fk) VALUES
-('Turma de Banco de Dados', 'P001'),
-('Turma de Programação Web', 'P002');
+('Turma de Banco de Dados', '0000001'),
+('Turma de Programação Web', '0000002');
 
 -- Inserts de Atividades
 INSERT INTO Atividade (nome, descricao, nota_max, pontos, data_entrega, badge_id_fk, turma_id_fk) VALUES
@@ -172,27 +172,117 @@ INSERT INTO Atividade (nome, descricao, nota_max, pontos, data_entrega, badge_id
 
 -- Inserts de Alunos
 INSERT INTO Aluno (matricula, nome, nickname, senha, xp, nivel, avatar_id_fk) VALUES
-('A001', 'João Silva', 'joaoslv', 'HASH_SENHA_3', 50, 1, 2),
-('A002', 'Ana Lima', 'aninha', 'HASH_SENHA_4', 120, 2, 3),
-('A003', 'Pedro Santos', 'pedrinho', 'HASH_SENHA_5', 300, 3, 1);
+('202510000001', 'Adriel', 'adriel', 'hash_senha_1', 50, 1, 1),
+('202510000002', 'Alexandre', 'alexandre', 'hash_senha_2', 85, 2, 2),
+('202510000003', 'Ana Carolina', 'anacarolina', 'hash_senha_3', 100, 2, 3),
+('202510000004', 'Davi', 'davi', 'hash_senha_4', 50, 1, 4),
+('202510000005', 'Enzo', 'enzo', 'hash_senha_5', 20, 1, 5),
+('202510000006', 'Gabriel', 'gabriel', 'hash_senha_6', 50, 1, 6),
+('202510000007', 'Guilherme', 'guilherme', 'hash_senha_7', 30, 1, 7),
+('202510000008', 'Gustavo', 'gustavo', 'hash_senha_8', 50, 1, 8),
+('202510000009', 'Iasmin', 'iasmin', 'hash_senha_9', 100, 2, 9),
+('202510000010', 'João Pedro', 'joaopedro', 'hash_senha_10', 60, 2, 10),
+('202510000011', 'Nicolas', 'nicolas', 'hash_senha_11', 40, 1, 11),
+('202510000012', 'Pedro Henrique', 'pedroh', 'hash_senha_12', 80, 2, 12),
+('202510000013', 'Rafaela', 'rafaela', 'hash_senha_13', 120, 3, 13),
+('202510000014', 'Rayssa', 'rayssa', 'hash_senha_14', 90, 2, 14),
+('202510000015', 'Samuel', 'samuel', 'hash_senha_15', 50, 1, 15),
+('202510000016', 'Sophia', 'sophia', 'hash_senha_16', 150, 3, 16),
+('202510000017', 'Thauane', 'thauane', 'hash_senha_17', 100, 2, 17),
+('202510000018', 'Valentina', 'valentina', 'hash_senha_18', 110, 2, 18),
+('202510000019', 'Yasmin', 'yasmin', 'hash_senha_19', 70, 2, 19);
 
 -- Inserts de Aluno_Turma (matrículas em turmas)
 INSERT INTO Aluno_Turma (aluno_matricula_fk, turma_id_fk) VALUES
-('A001', 1),
-('A002', 1),
-('A002', 2),
-('A003', 2);
+('202510000001', 1), 
+('202510000002', 1), 
+('202510000003', 1), 
+('202510000004', 1),
+('202510000005', 1), 
+('202510000006', 1), 
+('202510000007', 1), 
+('202510000008', 1),
+('202510000009', 1), 
+('202510000010', 1), 
+('202510000011', 1), 
+('202510000012', 1),
+('202510000013', 1), 
+('202510000014', 1), 
+('202510000015', 1), 
+('202510000016', 1),
+('202510000017', 1), 
+('202510000018', 1), 
+('202510000019', 1);
 
 -- Inserts de Aluno_Atividade (notas obtidas)
 INSERT INTO Aluno_Atividade (aluno_matricula_fk, atividade_id_fk, nota) VALUES
-('A001', 1, 8.5),
-('A002', 1, 10.0),
-('A002', 2, 9.0),
-('A003', 3, 7.5);
+('202510000001', 1, 8.5),
+('202510000002', 1, 9.0), 
+('202510000002', 2, 8.0),
+('202510000003', 1, 10.0), 
+('202510000003', 2, 10.0),
+('202510000004', 1, 7.5),
+('202510000005', 1, 6.0),
+('202510000006', 1, 8.0),
+('202510000007', 1, 7.0),
+('202510000008', 1, 8.5),
+('202510000009', 1, 9.5), 
+('202510000009', 2, 9.0),
+('202510000010', 1, 8.0),
+('202510000011', 1, 7.5),
+('202510000012', 1, 9.0),
+('202510000013', 1, 10.0), 
+('202510000013', 2, 9.5), 
+('202510000013', 3, 10.0),
+('202510000014', 1, 8.5),
+('202510000015', 1, 7.0),
+('202510000016', 1, 10.0), 
+('202510000016', 2, 10.0), 
+('202510000016', 3, 10.0),
+('202510000017', 1, 9.0),
+('202510000018', 1, 9.5),
+('202510000019', 1, 8.0);
 
 -- Inserts de Aluno_Badge (badges conquistados)
 INSERT INTO Aluno_Badge (aluno_matricula_fk, badge_id_fk, data_conquista) VALUES
-('A001', 1, NOW()),
-('A002', 1, NOW()),
-('A002', 2, NOW()),
-('A003', 1, NOW());
+('202510000001', 1, NOW()), 
+('202510000001', 4, NOW()),
+('202510000002', 1, NOW()), 
+('202510000002', 2, NOW()), 
+('202510000002', 3, NOW()),
+('202510000003', 1, NOW()), 
+('202510000003', 2, NOW()), 
+('202510000003', 3, NOW()), 
+('202510000003', 4, NOW()), 
+('202510000003', 5, NOW()),
+('202510000004', 1, NOW()),
+('202510000006', 1, NOW()), 
+('202510000006', 5, NOW()),
+('202510000007', 1, NOW()),
+('202510000008', 1, NOW()),
+('202510000009', 1, NOW()), 
+('202510000009', 2, NOW()), 
+('202510000009', 4, NOW()),
+('202510000010', 1, NOW()), 
+('202510000010', 3, NOW()),
+('202510000011', 1, NOW()),
+('202510000012', 1, NOW()), 
+('202510000012', 5, NOW()),
+('202510000013', 1, NOW()), 
+('202510000013', 2, NOW()), 
+('202510000013', 3, NOW()), 
+('202510000013', 4, NOW()), 
+('202510000013', 5, NOW()),
+('202510000014', 1, NOW()), 
+('202510000014', 2, NOW()),
+('202510000015', 1, NOW()),
+('202510000016', 1, NOW()), 
+('202510000016', 2, NOW()), 
+('202510000016', 3, NOW()), 
+('202510000016', 4, NOW()), 
+('202510000016', 5, NOW()),
+('202510000017', 1, NOW()), 
+('202510000017', 3, NOW()),
+('202510000018', 1, NOW()), 
+('202510000018', 4, NOW()),
+('202510000019', 1, NOW());

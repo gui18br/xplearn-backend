@@ -24,7 +24,6 @@ class AtividadeRead(BaseModel):
     badge_id_fk: int
     turma_id_fk: int
     data_entrega: datetime       
-     
     class Config:
         from_attributes = True
 
