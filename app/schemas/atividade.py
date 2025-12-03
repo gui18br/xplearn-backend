@@ -2,6 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import List, Optional
 from pydantic import BaseModel
+from app.schemas.badge import BadgeResponse
 
 class AtividadeBase(BaseModel):
     nome: str
@@ -26,15 +27,14 @@ class AtividadeRead(BaseModel):
     data_entrega: datetime       
     class Config:
         from_attributes = True
+    badge: BadgeResponse
 
 class AtividadeResponse(BaseModel):
     data: List[AtividadeRead]
-        
     class Config:
         from_attributes = True
         
 class AtividadeResponseSingle(BaseModel):
     data: AtividadeRead     
-     
     class Config:
         from_attributes = True

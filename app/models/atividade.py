@@ -12,7 +12,7 @@ class Atividade(Base):
     pontos = Column(Integer, nullable=True)
     data_entrega = Column(DateTime, nullable=False)
     
-    badge_id_fk = Column(Integer, ForeignKey("Badge.id"), nullable=True)
+    badge_id_fk = Column(Integer, ForeignKey("Badge.id"), nullable=False)
     turma_id_fk = Column(Integer, ForeignKey("Turma.id"), nullable=True)
 
     badge = relationship("Badge", backref="Atividade")

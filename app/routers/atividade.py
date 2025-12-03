@@ -18,12 +18,10 @@ def create_atv(
     ):
     
     try:
-        badge = None
-        if atv.badge_id_fk:
-            badge = db.query(Badge).filter(Badge.id == atv.badge_id_fk).first()
-            if not badge:
-                raise HTTPException(status_code=404, detail="Badge não encontrada")
-
+        badge = db.query(Badge).filter(Badge.id == atv.badge_id_fk).first()
+        if not badge:
+            raise HTTPException(status_code=404, detail="Badge não encontrada")
+        
         turma = None
         if atv.turma_id_fk:
             turma = db.query(Turma).filter(Turma.id == atv.turma_id_fk).first()

@@ -1,7 +1,18 @@
 -- Cria o banco de dados se ele não existir e o seleciona para uso.
+
 CREATE DATABASE IF NOT EXISTS gamificado_db
 DEFAULT CHARACTER SET utf8mb4
 DEFAULT COLLATE utf8mb4_unicode_ci;
+
+DROP TABLE Aluno_Atividade;
+DROP TABLE Aluno_Turma;
+DROP TABLE Aluno_Badge;
+DROP TABLE Atividade;
+DROP TABLE Turma;
+DROP TABLE Aluno;
+DROP TABLE Professor;
+DROP TABLE Badge;
+DROP TABLE Avatar;
 
 USE gamificado_db;
 
@@ -50,7 +61,7 @@ CREATE TABLE Atividade (
     nota_max DECIMAL(5, 2) NOT NULL DEFAULT 10.00,
     pontos INT UNSIGNED NOT NULL DEFAULT 0,
     data_entrega DATETIME,
-    badge_id_fk INT UNSIGNED, -- Nulo se a atividade não conceder um badge
+    badge_id_fk INT UNSIGNED NOT NULL,
     turma_id_fk INT UNSIGNED NOT NULL,
     CONSTRAINT fk_atividade_badge FOREIGN KEY (badge_id_fk) REFERENCES Badge(id),
     CONSTRAINT fk_atividade_turma FOREIGN KEY (turma_id_fk) REFERENCES Turma(id) ON DELETE CASCADE
