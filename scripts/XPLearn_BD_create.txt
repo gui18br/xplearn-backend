@@ -19,7 +19,7 @@ CREATE TABLE Badge (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     nome VARCHAR(255) NOT NULL,
     requisito TEXT,
-    icone VARCHAR(255) NOT NULL UNIQUE
+    caminho_foto VARCHAR(255) NOT NULL UNIQUE
 ) ENGINE=InnoDB;
 
 -- Tabela 3: Professor

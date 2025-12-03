@@ -133,7 +133,7 @@ INSERT INTO Avatar (nome, caminho_foto) VALUES
 ('Avatar115', '/imagens/avatares/avatar115.png');
 
 -- Inserts de Badges
-INSERT INTO Badge (nome, requisito, icone) VALUES
+INSERT INTO Badge (nome, requisito, caminho_foto) VALUES
 ('Hcomportamento', '', '/imagens/badges/H-comportamento.fw.png'),
 ('Hemocional', '', '/imagens/badges/H-emocional.fw.png'),
 ('Hescrita', '', '/imagens/badges/H-escrita.fw.png'),
