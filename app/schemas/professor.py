@@ -19,15 +19,15 @@ class ProfessorResponse(BaseModel):
         
 class ProfessorResponseList(BaseModel):
     data: List[ProfessorResponse]
-        
     class Config:
         from_attributes = True
         
 class ProfessorResponseSingle(BaseModel):
     data: ProfessorResponse
-    
     class Config:
         from_attributes = True  
 
 class ProfessorResponseCreate(BaseModel):
     data: dict
+    
+    
