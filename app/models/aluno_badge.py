@@ -3,7 +3,7 @@ from sqlalchemy.orm import relationship
 from app.database import Base
 
 class AlunoBadge(Base):
-    __tablename__ = "aluno_badge"
+    __tablename__ = "Aluno_Badge"
 
     aluno_matricula_fk = Column(String, ForeignKey("Aluno.matricula"), primary_key=True)
     badge_id_fk = Column(Integer, ForeignKey("Badge.id"), primary_key=True)

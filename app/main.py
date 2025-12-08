@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers import aluno, atividade, avatar, badge, login, professor, turma
 from fastapi.staticfiles import StaticFiles
 
-
 app = FastAPI()
 
 origins = [

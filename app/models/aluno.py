@@ -20,3 +20,4 @@ class Aluno(Base):
     
     badges_associados = relationship("AlunoBadge", back_populates="aluno")
     atividades_associadas = relationship("AlunoAtividade", back_populates="aluno")
+    badges_associados = relationship("AlunoBadge", back_populates="aluno")
