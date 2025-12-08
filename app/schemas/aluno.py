@@ -31,8 +31,7 @@ class AlunoResponse(BaseModel):
         if not v:
             return []
         
-        # Se 'v' for uma lista, verifica se os itens são objetos da tabela associativa (AlunoBadge)
-        # O modelo AlunoBadge tem um atributo '.badge', que é o que queremos retornar
+        
         cleaned_badges = []
         for item in v:
             if hasattr(item, 'badge'):

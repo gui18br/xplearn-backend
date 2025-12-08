@@ -1,5 +1,6 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
+from .aluno import AlunoResponse
 
 class TurmaBase(BaseModel):
     nome: str
@@ -12,9 +13,8 @@ class TurmaResponse(BaseModel):
     id: int
     nome: str
     professor_matricula_fk: Optional[str] = None
-    
     professor: Optional[str] = None  
-
+    alunos: List[AlunoResponse] = []
     class Config:
         from_attributes = True
 
