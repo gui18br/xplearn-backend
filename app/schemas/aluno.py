@@ -16,10 +16,17 @@ class AlunoBase(BaseModel):
 class AlunoCreate(AlunoBase):
     pass
 
+class AlunoUpdate(BaseModel):
+    nome: Optional[str] = None
+    nickname: Optional[str] = None
+    avatar_id_fk: Optional[int] = None
+    senha_atual: Optional[str] = None
+    nova_senha: Optional[str] = None
+
 class AlunoResponse(BaseModel):
     matricula: str
     nome: str
-    nickname: str
+    nickname: Optional[str] = None
     xp: int
     nivel: int
     icone: Optional[str] = None
