@@ -152,3 +152,32 @@ def listar_turmas_aluno(matricula: str, db: Session = Depends(database.get_db)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro interno do servidor ao listar turmas do aluno."
         )
+    
+@router.delete("/{turma_id}/alunos/{matricula}")
+def remove_aluno_turma(matricula: str, turma_id: int, db: Session = Depends(database.get_db)):
+    try:
+        aluno = db.get(Aluno, matricula)
+        turma = db.get(Turma, turma_id)
+        
+        if not aluno:
+            raise HTTPException(status_code=404, detail="Aluno não encontrado")
+        if not turma:
+            raise HTTPException(status_code=404, detail="Turma não encontrada")
+
+        if turma not in aluno.turmas:
+            raise HTTPException(status_code=400, detail="Aluno não pertence a esta turma")
+
+        aluno.turmas.remove(turma) # Remove a relação
+        db.commit()
+        return {"msg": f"Aluno {aluno.nome} removido da turma {turma.nome}"}
+    
+    except HTTPException as e:
+        raise e
+    except SQLAlchemyError as e:
+        db.rollback()
+        print(f"Erro ao remover aluno: {e}")
+        raise HTTPException(status_code=500, detail="Erro no banco de dados.")
+    except Exception as e:
+        db.rollback()
+        print(f"Erro inesperado: {e}")
+        raise HTTPException(status_code=500, detail="Erro interno do servidor.")
