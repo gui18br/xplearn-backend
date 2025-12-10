@@ -2,6 +2,8 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import List, Optional
 from pydantic import BaseModel
+from .badge import BadgeResponse
+from .turma import TurmaResponse
 
 class AtividadeBase(BaseModel):
     nome: str
@@ -23,7 +25,9 @@ class AtividadeRead(BaseModel):
     pontos: int
     badge_id_fk: int
     turma_id_fk: int
-    data_entrega: datetime       
+    data_entrega: datetime
+    badge: Optional[BadgeResponse] = None
+    turma: Optional[TurmaResponse] = None
      
     class Config:
         from_attributes = True
