@@ -9,7 +9,7 @@ from app.models.avatar import Avatar
 
 
 from datetime import timedelta
-from app.security import hash_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
+from app.security import hash_password, verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 
 router = APIRouter(prefix="/alunos", tags=["Alunos"])
 
@@ -116,4 +116,98 @@ def get_aluno_by_id(matricula: str, db: Session = Depends(database.get_db)):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro interno do servidor ao buscar aluno."
+        )
+
+@router.put("/{matricula}", response_model=schemas.AlunoResponseSingle)
+def update_aluno(
+    matricula: str,
+    aluno_update: schemas.AlunoUpdate,
+    db: Session = Depends(database.get_db)
+):
+    try:
+        # Busca o aluno existente
+        aluno = db.query(Aluno).filter(Aluno.matricula == matricula).first()
+        
+        if not aluno:
+            raise HTTPException(status_code=404, detail="Aluno não encontrado")
+        
+        # Valida avatar se fornecido
+        if aluno_update.avatar_id_fk is not None:
+            avatar = db.query(Avatar).filter(Avatar.id == aluno_update.avatar_id_fk).first()
+            if not avatar:
+                raise HTTPException(status_code=404, detail="Avatar não encontrado")
+            aluno.avatar_id_fk = aluno_update.avatar_id_fk
+        
+        # Valida nickname se fornecido
+        if aluno_update.nickname is not None:
+            # Trata string vazia como None
+            nickname_final = aluno_update.nickname.strip() if aluno_update.nickname and aluno_update.nickname.strip() else None
+            
+            # Só valida se o nickname for diferente do atual e não for None
+            if nickname_final != aluno.nickname and nickname_final is not None:
+                existing_aluno = db.query(Aluno).filter(
+                    Aluno.nickname == nickname_final,
+                    Aluno.matricula != matricula
+                ).first()
+                if existing_aluno:
+                    raise HTTPException(status_code=400, detail="Nickname já está em uso")
+            
+            aluno.nickname = nickname_final
+        
+        # Atualiza nome se fornecido
+        if aluno_update.nome is not None:
+            aluno.nome = aluno_update.nome
+        
+        # Valida e atualiza senha se fornecida
+        if aluno_update.nova_senha:
+            if not aluno_update.senha_atual:
+                raise HTTPException(
+                    status_code=400,
+                    detail="É necessário informar a senha atual para alterar a senha"
+                )
+            
+            # Verifica se a senha atual está correta
+            if not verify_password(aluno_update.senha_atual, aluno.senha):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Senha atual incorreta"
+                )
+            
+            # Valida tamanho mínimo da nova senha
+            if len(aluno_update.nova_senha) < 6:
+                raise HTTPException(
+                    status_code=400,
+                    detail="A nova senha deve ter no mínimo 6 caracteres"
+                )
+            
+            # Atualiza a senha
+            aluno.senha = hash_password(aluno_update.nova_senha)
+        
+        db.commit()
+        db.refresh(aluno)
+        
+        # Recarrega o aluno com relacionamentos
+        aluno_atualizado = db.query(Aluno).filter(Aluno.matricula == matricula).first()
+        
+        if not aluno_atualizado:
+            raise HTTPException(status_code=404, detail="Erro ao recarregar aluno após atualização")
+        
+        return {"data": aluno_atualizado}
+    
+    except HTTPException as e:
+        db.rollback()
+        raise e
+    except SQLAlchemyError as e:
+        db.rollback()
+        print(f"Erro no banco de dados ao atualizar aluno: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro no banco de dados: Não foi possível atualizar o aluno. Detalhe: {e}"
+        )
+    except Exception as e:
+        db.rollback()
+        print(f"Erro inesperado ao atualizar aluno: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro interno do servidor ao atualizar aluno."
         )

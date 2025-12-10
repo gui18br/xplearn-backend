@@ -18,10 +18,12 @@ def create_atv(
     ):
     
     try:
-        badge = db.query(Badge).filter(Badge.id == atv.badge_id_fk).first()
-        if not badge:
-            raise HTTPException(status_code=404, detail="Badge não encontrada")
-        
+        badge = None
+        if atv.badge_id_fk:
+            badge = db.query(Badge).filter(Badge.id == atv.badge_id_fk).first()
+            if not badge:
+                raise HTTPException(status_code=404, detail="Badge não encontrada")
+
         turma = None
         if atv.turma_id_fk:
             turma = db.query(Turma).filter(Turma.id == atv.turma_id_fk).first()
@@ -135,72 +137,4 @@ def atribuir_nota_aluno(matricula: str, atv_id: int, nota: str, db: Session = De
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Erro interno do servidor ao atribuir nota."
-        )
-
-@router.put("/{id}", response_model=schemas.AtividadeResponseSingle)
-def update_atv(
-    id: int, 
-    atv: schemas.AtividadeCreate, 
-    db: Session = Depends(database.get_db)
-):
-    try:
-        existing_atv = db.query(Atividade).filter(Atividade.id == id).first()
-        if not existing_atv:
-            raise HTTPException(status_code=404, detail="Atividade não encontrada")
-
-        if atv.badge_id_fk:
-            badge = db.query(Badge).filter(Badge.id == atv.badge_id_fk).first()
-            if not badge:
-                raise HTTPException(status_code=404, detail="Badge não encontrada")
-            existing_atv.badge_id_fk = badge.id
-        else:
-            existing_atv.badge_id_fk = None
-
-        if atv.turma_id_fk:
-            turma = db.query(Turma).filter(Turma.id == atv.turma_id_fk).first()
-            if not turma:
-                raise HTTPException(status_code=404, detail="Turma não encontrada")
-            existing_atv.turma_id_fk = turma.id
-
-        existing_atv.nome = atv.nome
-        existing_atv.descricao = atv.descricao
-        existing_atv.nota_max = atv.nota_max
-        existing_atv.pontos = atv.pontos
-        existing_atv.data_entrega = atv.data_entrega
-
-        db.commit()
-        db.refresh(existing_atv)
-
-        return {"data": existing_atv}
-
-    except HTTPException as e:
-        raise e
-    except SQLAlchemyError as e:
-        db.rollback()
-        print(f"Erro no banco ao atualizar atividade: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro no banco de dados ao atualizar atividade."
-        )
-
-
-@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_atv(id: int, db: Session = Depends(database.get_db)):
-    try:
-        existing_atv = db.query(Atividade).filter(Atividade.id == id).first()
-        if not existing_atv:
-            raise HTTPException(status_code=404, detail="Atividade não encontrada")
-
-        db.delete(existing_atv)
-        db.commit()
-        return None
-
-    except HTTPException as e:
-        raise e
-    except SQLAlchemyError as e:
-        db.rollback()
-        print(f"Erro no banco ao deletar atividade: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro no banco de dados ao deletar atividade."
         )
