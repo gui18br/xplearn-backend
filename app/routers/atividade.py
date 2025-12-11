@@ -10,6 +10,7 @@ from app.models.aluno_atividade import AlunoAtividade
 from app.models.aluno import Aluno
 from app.models.aluno_turma import aluno_turma
 from app.schemas import aluno_atividade as aluno_atividade_schemas
+import traceback
 
 
 router  = APIRouter(prefix="/atividades", tags=["Atividades"])
@@ -495,4 +496,105 @@ def atribuir_nota_aluno(matricula: str, atv_id: int, nota: str, db: Session = De
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Erro interno do servidor ao atribuir nota."
+        )
+
+@router.get("/{id}/alunos", response_model=aluno_atividade_schemas.AlunosAtividadeResponse)
+def get_alunos_atividade(id: int, db: Session = Depends(database.get_db)):
+    try:
+        # Busca a atividade com turma
+        atividade = db.query(Atividade).options(
+            joinedload(Atividade.turma)
+        ).filter(Atividade.id == id).first()
+        
+        if not atividade:
+            raise HTTPException(status_code=404, detail="Atividade não encontrada")
+        
+        if not atividade.turma:
+            # Retorna lista vazia se não tiver turma, em vez de erro
+            return {"atividade_id": id, "alunos": []}
+        
+        # 1. Busca alunos da turma
+        alunos_da_turma = db.query(Aluno).join(
+            aluno_turma, Aluno.matricula == aluno_turma.c.aluno_matricula_fk
+        ).filter(
+            aluno_turma.c.turma_id_fk == atividade.turma.id
+        ).options(
+            joinedload(Aluno.avatar)
+        ).all()
+        
+        # 2. Busca registros de quem já fez a atividade (notas)
+        alunos_que_fizeram = db.query(AlunoAtividade).filter(
+            AlunoAtividade.atividade_id_fk == id
+        ).all()
+        
+        mapa_notas = {}
+        for aa in alunos_que_fizeram:
+            # Força conversão para string, tratando None como "0" ou vazio
+            nota_val = str(aa.nota) if aa.nota is not None else None
+            mapa_notas[aa.aluno_matricula_fk] = nota_val
+        
+        # 3. Identifica alunos extras
+        matriculas_da_turma = {aluno.matricula for aluno in alunos_da_turma}
+        matriculas_com_atividade = set(mapa_notas.keys())
+        matriculas_extras = matriculas_com_atividade - matriculas_da_turma
+        
+        alunos_adicionais = []
+        if matriculas_extras:
+            alunos_adicionais = db.query(Aluno).filter(
+                Aluno.matricula.in_(list(matriculas_extras))
+            ).options(
+                joinedload(Aluno.avatar)
+            ).all()
+        
+        todos_alunos = list(alunos_da_turma) + list(alunos_adicionais)
+        
+        lista_final_alunos = []
+        
+        for aluno in todos_alunos:
+            try:
+                fez = aluno.matricula in mapa_notas
+                nota_aluno = mapa_notas.get(aluno.matricula)
+                
+                # BLINDAGEM DE DADOS: Evita erro de validação Pydantic
+                # Se o schema pedir string e vier None, quebra. Aqui garantimos string.
+                safe_nome = aluno.nome if aluno.nome else "Sem nome"
+                safe_nickname = aluno.nickname if aluno.nickname else "" 
+                
+                # Monta avatar
+                avatar_data = None
+                if aluno.avatar:
+                    avatar_data = {
+                        "id": aluno.avatar.id,
+                        "caminho_foto": aluno.avatar.caminho_foto or ""
+                    }
+
+                aluno_obj = aluno_atividade_schemas.AlunoStatusAtividade(
+                    matricula=aluno.matricula,
+                    nome=safe_nome,
+                    nickname=safe_nickname,  # Passando string vazia em vez de None
+                    fez_atividade=fez,
+                    nota=nota_aluno,         # Pode ser None dependendo do schema
+                    avatar=avatar_data
+                )
+                lista_final_alunos.append(aluno_obj)
+                
+            except Exception as e:
+                print(f"ERRO DE VALIDAÇÃO NO ALUNO {aluno.matricula}: {e}")
+                # Não dá raise aqui, apenas pula o aluno problemático para não quebrar a tela toda
+                continue
+
+        return {
+            "atividade_id": id,
+            "alunos": lista_final_alunos
+        }
+    
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        db.rollback()
+        print("====== ERRO 500 CRÍTICO ======")
+        traceback.print_exc() 
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro interno no servidor."
         )
