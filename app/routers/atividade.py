@@ -9,7 +9,9 @@ from app.models.turma import Turma
 from app.models.aluno_atividade import AlunoAtividade
 from app.models.aluno import Aluno
 from app.models.aluno_turma import aluno_turma
+from app.models.aluno_badge import AlunoBadge
 from app.schemas import aluno_atividade as aluno_atividade_schemas
+from datetime import datetime
 import traceback
 
 
@@ -103,7 +105,6 @@ def get_atvs(db: Session = Depends(database.get_db)):
 @router.get("/{id}", response_model=schemas.AtividadeResponseSingle)
 def get_atv_by_id(id: int, db: Session = Depends(database.get_db)):
     try:
-        # Carrega os relacionamentos de badge e turma
         atv = db.query(Atividade).options(
             joinedload(Atividade.badge),
             joinedload(Atividade.turma)
@@ -130,132 +131,64 @@ def get_atv_by_id(id: int, db: Session = Depends(database.get_db)):
             detail=f"Erro interno do servidor ao buscar atividade."
         )
 
-@router.get("/{id}/alunos", response_model=aluno_atividade_schemas.AlunosAtividadeResponse)
-def get_alunos_atividade(id: int, db: Session = Depends(database.get_db)):
+@router.put("/{id}", response_model=schemas.AtividadeResponseSingle)
+def update_atv(
+    id: int,
+    atv: schemas.AtividadeCreate,
+    db: Session = Depends(database.get_db)
+):
     try:
-        # Busca a atividade com turma
-        atividade = db.query(Atividade).options(
-            joinedload(Atividade.turma)
-        ).filter(Atividade.id == id).first()
-        
-        if not atividade:
+        activity = db.query(Atividade).filter(Atividade.id == id).first()
+        if not activity:
             raise HTTPException(status_code=404, detail="Atividade não encontrada")
-        
-        if not atividade.turma:
-            raise HTTPException(status_code=400, detail="Atividade não possui turma associada")
-        
-        # Busca todos os alunos da turma usando join explícito na tabela de junção
-        alunos_da_turma = db.query(Aluno).join(
-            aluno_turma, Aluno.matricula == aluno_turma.c.aluno_matricula_fk
-        ).filter(
-            aluno_turma.c.turma_id_fk == atividade.turma.id
-        ).options(
-            joinedload(Aluno.avatar)
-        ).all()
-        
-        # Busca alunos que já fizeram a atividade
-        alunos_que_fizeram = db.query(AlunoAtividade).filter(
-            AlunoAtividade.atividade_id_fk == id
-        ).all()
-        
-        # Converte nota para string (pode vir como Decimal do banco)
-        matriculas_que_fizeram = {}
-        for aa in alunos_que_fizeram:
-            nota_str = str(aa.nota) if aa.nota is not None else "0"
-            matriculas_que_fizeram[aa.aluno_matricula_fk] = nota_str
-        
-        # Cria um conjunto de matrículas dos alunos da turma para verificação rápida
-        matriculas_da_turma = {aluno.matricula for aluno in alunos_da_turma}
-        
-        # Busca alunos que fizeram a atividade mas podem não estar na turma (para garantir que apareçam)
-        matriculas_que_fizeram_set = set(matriculas_que_fizeram.keys())
-        matriculas_faltantes = matriculas_que_fizeram_set - matriculas_da_turma
-        
-        # Debug: log das matrículas
-        print(f"DEBUG: Matrículas da turma: {matriculas_da_turma}")
-        print(f"DEBUG: Matrículas que fizeram: {matriculas_que_fizeram_set}")
-        print(f"DEBUG: Matrículas faltantes: {matriculas_faltantes}")
-        
-        # Se houver alunos marcados que não estão na lista da turma, busca eles também
-        alunos_adicionais = []
-        if matriculas_faltantes:
-            print(f"DEBUG: Buscando {len(matriculas_faltantes)} alunos adicionais que fizeram a atividade")
-            alunos_adicionais = db.query(Aluno).filter(
-                Aluno.matricula.in_(matriculas_faltantes)
-            ).options(
-                joinedload(Aluno.avatar)
-            ).all()
-            print(f"DEBUG: Encontrados {len(alunos_adicionais)} alunos adicionais")
-        
-        # Combina ambas as listas (alunos da turma + alunos marcados que não estão na turma)
-        todos_alunos = list(alunos_da_turma) + alunos_adicionais
-        print(f"DEBUG: Total de alunos a processar: {len(todos_alunos)}")
-        
-        # Monta lista de status dos alunos
-        alunos_status = []
-        for aluno in todos_alunos:
-            try:
-                fez_atividade = aluno.matricula in matriculas_que_fizeram
-                
-                # Monta o objeto avatar de forma segura
-                avatar_dict = None
-                if aluno.avatar:
-                    try:
-                        avatar_dict = {
-                            "id": aluno.avatar.id if hasattr(aluno.avatar, 'id') else None,
-                            "caminho_foto": aluno.avatar.caminho_foto if hasattr(aluno.avatar, 'caminho_foto') else None
-                        }
-                    except Exception as e:
-                        print(f"Erro ao processar avatar do aluno {aluno.matricula}: {e}")
-                        avatar_dict = None
-                
-                # Converte nota para string se existir
-                nota_aluno = matriculas_que_fizeram.get(aluno.matricula)
-                if nota_aluno is not None:
-                    # Garante que é string (pode vir como Decimal)
-                    nota_aluno = str(nota_aluno)
-                
-                alunos_status.append(
-                    aluno_atividade_schemas.AlunoStatusAtividade(
-                        matricula=aluno.matricula,
-                        nome=aluno.nome if aluno.nome else "",
-                        nickname=aluno.nickname,
-                        fez_atividade=fez_atividade,
-                        nota=nota_aluno,
-                        avatar=avatar_dict
-                    )
-                )
-            except Exception as e:
-                print(f"Erro ao processar aluno {aluno.matricula if aluno else 'desconhecido'}: {e}")
-                import traceback
-                traceback.print_exc()
-                # Continua com o próximo aluno ao invés de quebrar tudo
-                continue
-        
-        return {
-            "atividade_id": id,
-            "alunos": alunos_status
-        }
-    
+
+        if atv.turma_id_fk:
+            turma = db.query(Turma).filter(Turma.id == atv.turma_id_fk).first()
+            if not turma:
+                raise HTTPException(status_code=404, detail="Turma informada não encontrada")
+            activity.turma_id_fk = turma.id
+        else:
+            pass
+
+        if atv.badge_id_fk:
+            badge = db.query(Badge).filter(Badge.id == atv.badge_id_fk).first()
+            if not badge:
+                raise HTTPException(status_code=404, detail="Badge informada não encontrada")
+            activity.badge_id_fk = badge.id
+        else:
+            pass
+
+        activity.nome = atv.nome
+        activity.descricao = atv.descricao
+        activity.nota_max = atv.nota_max
+        activity.pontos = atv.pontos
+        activity.data_entrega = atv.data_entrega
+
+        db.commit()
+        db.refresh(activity)
+
+        updated_atv = db.query(Atividade).options(
+            joinedload(Atividade.badge),
+            joinedload(Atividade.turma)
+        ).filter(Atividade.id == activity.id).first()
+
+        return {"data": updated_atv}
+
     except HTTPException as e:
         raise e
     except SQLAlchemyError as e:
         db.rollback()
-        print(f"Erro no banco de dados ao buscar alunos da atividade: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"Erro no banco ao atualizar atividade: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro no banco de dados ao buscar alunos da atividade."
+            detail=f"Erro no banco de dados ao atualizar atividade."
         )
     except Exception as e:
         db.rollback()
-        print(f"Erro inesperado ao buscar alunos da atividade: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"Erro inesperado ao atualizar atividade: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro interno do servidor ao buscar alunos da atividade."
+            detail="Erro interno do servidor ao atualizar atividade."
         )
 
 @router.post("/{id}/alunos/{matricula}")
@@ -289,61 +222,82 @@ def marcar_aluno_fez_atividade(
                     detail=f"Aluno {matricula} não está matriculado na turma desta atividade"
                 )
         
-        # Verifica se já existe registro
+        # Verifica se já existe registro de atividade feita
         existing = db.query(AlunoAtividade).filter(
             AlunoAtividade.atividade_id_fk == id,
             AlunoAtividade.aluno_matricula_fk == matricula
         ).first()
         
         if existing:
-            # Atualiza a nota se fornecida
+            # Se já existe, APENAS atualiza a nota
             if nota.nota is not None:
                 try:
                     nota_valor = float(nota.nota)
                     nota_max = float(atividade.nota_max) if atividade.nota_max else 10.0
                     
-                    if nota_valor < 0:
-                        raise HTTPException(status_code=400, detail="A nota não pode ser menor que 0")
-                    if nota_valor > nota_max:
-                        raise HTTPException(
-                            status_code=400,
-                            detail=f"A nota não pode ser maior que {nota_max} (nota máxima da atividade)"
-                        )
+                    if nota_valor < 0 or nota_valor > nota_max:
+                        raise HTTPException(status_code=400, detail="Nota fora dos limites permitidos")
                     
                     existing.nota = str(nota_valor)
                     db.commit()
                 except (ValueError, TypeError):
                     raise HTTPException(status_code=400, detail="Nota inválida")
-            return {"msg": f"Aluno {matricula} já estava marcado como tendo feito a atividade"}
+            return {"msg": "Nota atualizada. O aluno já possuía o XP e Badge desta atividade."}
         
-        # Valida a nota se fornecida
+        # === 1. PROCESSAR NOTA ===
         nota_valor = 0.0
         if nota.nota is not None:
             try:
                 nota_valor = float(nota.nota)
                 nota_max = float(atividade.nota_max) if atividade.nota_max else 10.0
-                
-                if nota_valor < 0:
-                    raise HTTPException(status_code=400, detail="A nota não pode ser menor que 0")
-                if nota_valor > nota_max:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"A nota não pode ser maior que {nota_max} (nota máxima da atividade)"
-                    )
-            except (ValueError, TypeError):
+                if nota_valor < 0 or nota_valor > nota_max:
+                    raise HTTPException(status_code=400, detail="Nota fora dos limites permitidos")
+            except ValueError:
                 raise HTTPException(status_code=400, detail="Nota inválida")
         
-        # Cria novo registro com nota padrão "0" se não fornecida
+        # Cria o registro de que fez a atividade
         novo_registro = AlunoAtividade(
             aluno_matricula_fk=matricula,
             atividade_id_fk=id,
             nota=str(nota_valor)
         )
-        
         db.add(novo_registro)
+        
+        # === 2. ATRIBUIR XP E NÍVEL ===
+        pontos_da_atividade = atividade.pontos if atividade.pontos else 0
+        xp_atual = aluno.xp if aluno.xp else 0
+        
+        # Soma o XP
+        aluno.xp = xp_atual + pontos_da_atividade
+        
+        # CORREÇÃO: Nível a cada 1000 XP
+        aluno.nivel = 1 + (aluno.xp // 1000)
+        
+        # === 3. ATRIBUIR BADGE (SE HOUVER) ===
+        msg_badge = ""
+        if atividade.badge_id_fk:
+            # Verifica se o aluno já tem esse badge
+            badge_existente = db.query(AlunoBadge).filter(
+                AlunoBadge.aluno_matricula_fk == matricula,
+                AlunoBadge.badge_id_fk == atividade.badge_id_fk
+            ).first()
+
+            if not badge_existente:
+                novo_badge_aluno = AlunoBadge(
+                    aluno_matricula_fk=matricula,
+                    badge_id_fk=atividade.badge_id_fk,
+                    data_conquista=datetime.now() # <--- AQUI ESTAVA FALTANDO A DATA
+                )
+                db.add(novo_badge_aluno)
+                msg_badge = " e Badge conquistado!"
+            else:
+                msg_badge = " (Badge já possuído)"
+
         db.commit()
         
-        return {"msg": f"Aluno {matricula} marcado como tendo feito a atividade"}
+        return {
+            "msg": f"Atividade concluída! +{pontos_da_atividade} XP.{msg_badge} Nível atual: {aluno.nivel}"
+        }
     
     except HTTPException as e:
         db.rollback()
@@ -353,11 +307,13 @@ def marcar_aluno_fez_atividade(
         print(f"Erro no banco de dados ao marcar aluno: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro no banco de dados ao marcar aluno."
+            detail=f"Erro no banco de dados ao marcar aluno: {str(e)}"
         )
     except Exception as e:
         db.rollback()
         print(f"Erro inesperado ao marcar aluno: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro interno do servidor ao marcar aluno."
@@ -439,7 +395,15 @@ def desmarcar_aluno_fez_atividade(
     db: Session = Depends(database.get_db)
 ):
     try:
-        # Busca o registro
+        # Busca a atividade
+        atividade = db.query(Atividade).filter(Atividade.id == id).first()
+        if not atividade:
+            raise HTTPException(status_code=404, detail="Atividade não encontrada")
+
+        # Busca o aluno
+        aluno = db.query(Aluno).filter(Aluno.matricula == matricula).first()
+
+        # Busca o registro da atividade feita
         registro = db.query(AlunoAtividade).filter(
             AlunoAtividade.atividade_id_fk == id,
             AlunoAtividade.aluno_matricula_fk == matricula
@@ -448,10 +412,33 @@ def desmarcar_aluno_fez_atividade(
         if not registro:
             raise HTTPException(status_code=404, detail="Registro não encontrado")
         
+        # === 1. REMOVE XP e RECALCULA NÍVEL ===
+        if aluno:
+            pontos_a_remover = atividade.pontos if atividade.pontos else 0
+            xp_atual = aluno.xp if aluno.xp else 0
+            
+            # Subtrai o XP
+            novo_xp = xp_atual - pontos_a_remover
+            aluno.xp = novo_xp if novo_xp >= 0 else 0
+            
+            # CORREÇÃO: Recalcula nível (Regra 1000 XP)
+            aluno.nivel = 1 + (aluno.xp // 1000)
+        
+        # === 2. REMOVE BADGE (SE HOUVER E FOI GANHO NESTA ATIVIDADE) ===
+        if atividade.badge_id_fk:
+            badge_associado = db.query(AlunoBadge).filter(
+                AlunoBadge.aluno_matricula_fk == matricula,
+                AlunoBadge.badge_id_fk == atividade.badge_id_fk
+            ).first()
+            
+            if badge_associado:
+                db.delete(badge_associado)
+
+        # Remove o registro da atividade
         db.delete(registro)
         db.commit()
         
-        return {"msg": f"Aluno {matricula} desmarcado da atividade"}
+        return {"msg": f"Aluno {matricula} desmarcado. XP e Badge removidos."}
     
     except HTTPException as e:
         db.rollback()
@@ -470,7 +457,7 @@ def desmarcar_aluno_fez_atividade(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro interno do servidor ao desmarcar aluno."
         )
-
+        
 @router.post("/alunos/{matricula}/atividades/{atv_id}")
 def atribuir_nota_aluno(matricula: str, atv_id: int, nota: str, db: Session = Depends(database.get_db)):
     try:
@@ -510,10 +497,8 @@ def get_alunos_atividade(id: int, db: Session = Depends(database.get_db)):
             raise HTTPException(status_code=404, detail="Atividade não encontrada")
         
         if not atividade.turma:
-            # Retorna lista vazia se não tiver turma, em vez de erro
             return {"atividade_id": id, "alunos": []}
         
-        # 1. Busca alunos da turma
         alunos_da_turma = db.query(Aluno).join(
             aluno_turma, Aluno.matricula == aluno_turma.c.aluno_matricula_fk
         ).filter(
@@ -522,18 +507,15 @@ def get_alunos_atividade(id: int, db: Session = Depends(database.get_db)):
             joinedload(Aluno.avatar)
         ).all()
         
-        # 2. Busca registros de quem já fez a atividade (notas)
         alunos_que_fizeram = db.query(AlunoAtividade).filter(
             AlunoAtividade.atividade_id_fk == id
         ).all()
         
         mapa_notas = {}
         for aa in alunos_que_fizeram:
-            # Força conversão para string, tratando None como "0" ou vazio
             nota_val = str(aa.nota) if aa.nota is not None else None
             mapa_notas[aa.aluno_matricula_fk] = nota_val
         
-        # 3. Identifica alunos extras
         matriculas_da_turma = {aluno.matricula for aluno in alunos_da_turma}
         matriculas_com_atividade = set(mapa_notas.keys())
         matriculas_extras = matriculas_com_atividade - matriculas_da_turma
